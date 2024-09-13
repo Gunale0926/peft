@@ -10,7 +10,7 @@ from peft.utils.integrations import gather_params_ctx
 from peft.utils import TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING
 
 from .config import SorsaConfig
-from .layers import Linear, SorsaLayer
+from .layer import Linear, SorsaLayer
 
 
 class SorsaModel(BaseTuner):
@@ -34,11 +34,12 @@ class SorsaModel(BaseTuner):
         if not isinstance(target, SorsaLayer):
             new_module = self._create_new_module(sorsa_config, adapter_name, target)
             self._replace_module(parent, target_name, new_module, target)
-        target.update_layer(
-            adapter_name,
-            sorsa_config.r,
-            sorsa_alpha=sorsa_config.alpha,
-        )
+        else:
+            target.update_layer(
+                adapter_name,
+                sorsa_config.r,
+                sorsa_alpha=sorsa_config.sorsa_alpha,
+            )
 
     def _replace_module(self, parent, child_name, new_module, child):
         setattr(parent, child_name, new_module)
@@ -96,7 +97,7 @@ class SorsaModel(BaseTuner):
                 target,
                 adapter_name,
                 sorsa_config.r,
-                sorsa_alpha=sorsa_config.alpha,
+                sorsa_alpha=sorsa_config.sorsa_alpha,
                 fan_in_fan_out=sorsa_config.fan_in_fan_out,
             )
             return new_module

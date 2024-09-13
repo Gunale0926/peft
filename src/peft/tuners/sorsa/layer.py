@@ -83,6 +83,7 @@ class SorsaLayer(BaseTunerLayer):
         self.sorsa_A[adapter_name] = nn.Parameter(torch.empty(r, self.in_features))
         self.sorsa_S[adapter_name] = nn.Parameter(torch.empty(r))
         self.sorsa_B[adapter_name] = nn.Parameter(torch.empty(self.out_features, r))
+        self.scaling[adapter_name] = sorsa_alpha / r
         self.sorsa_init(adapter_name)
 
     def sorsa_init(self, adapter_name):
@@ -96,9 +97,9 @@ class SorsaLayer(BaseTunerLayer):
         weight = weight.to(torch.float32)
         v, s, ut = torch.linalg.svd(self.weight, full_matrices=False)
 
-        sorsa_A = ut[:, : self.r[adapter_name]]
+        sorsa_A = ut[: self.r[adapter_name], :]
         sorsa_S = s[: self.r[adapter_name]]
-        sorsa_B = v[: self.r[adapter_name], :]
+        sorsa_B = v[:, : self.r[adapter_name]]
 
         self.sorsa_A[adapter_name].data = sorsa_A
         self.sorsa_S[adapter_name].data = sorsa_S
@@ -193,7 +194,7 @@ class SorsaLayer(BaseTunerLayer):
         return result
 
 
-class Linear(nn.Linear, SorsaLayer):
+class Linear(nn.Module, SorsaLayer):
     # SORSA implemented in a dense layer
     def __init__(
         self,
