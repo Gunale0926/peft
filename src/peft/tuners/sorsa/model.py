@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import warnings
+import re
 
 import torch
 from torch import nn
-from peft.tuners.tuners_utils import (
-    BaseTuner,
-    BaseTunerLayer,
-)
+from peft.tuners.tuners_utils import BaseTuner, BaseTunerLayer, check_adapters_to_merge, check_target_module_exists
 from peft.utils.integrations import gather_params_ctx
+from peft.utils import TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING
 
 from .config import SorsaConfig
 from .layers import Linear, SorsaLayer
@@ -103,6 +102,65 @@ class SorsaModel(BaseTuner):
             return new_module
         else:
             raise ValueError(f"Target module {target_base_layer} is not supported by SORSA.")
+
+    @staticmethod
+    def _check_target_module_exists(sorsa_config, key):
+        return check_target_module_exists(sorsa_config, key)
+
+    def _mark_only_adapters_as_trainable(self, model: nn.Module) -> None:
+        for n, p in model.named_parameters():
+            if self.prefix not in n:
+                p.requires_grad = False
+
+        for active_adapter in self.active_adapters:
+            bias = self.peft_config[active_adapter].bias
+            if bias == "none":
+                continue
+
+            if bias == "all":
+                for n, p in model.named_parameters():
+                    if "bias" in n:
+                        p.requires_grad = True
+            elif bias == "sorsa_only":
+                for m in model.modules():
+                    if isinstance(m, SorsaLayer) and hasattr(m, "bias") and m.bias is not None:
+                        m.bias.requires_grad = True
+            else:
+                raise NotImplementedError(f"Requested bias: {bias}, is not implemented.")
+
+    @staticmethod
+    def _prepare_adapter_config(peft_config, model_config):
+        if peft_config.target_modules is None:
+            if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING:
+                raise ValueError("Please specify `target_modules` in `peft_config`")
+            peft_config.target_modules = set(
+                TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING[model_config["model_type"]]
+            )
+        return peft_config
+
+    def enable_adapter_layers(self) -> None:
+        self._set_adapter_layers(enabled=True)
+
+    def disable_adapter_layers(self) -> None:
+        for active_adapter in self.active_adapters:
+            val = self.peft_config[active_adapter].bias
+            if val != "none":
+                msg = (
+                    f"Careful, disabling adapter layers with bias configured to be '{val}' does not produce the same "
+                    "output as the the base model would without adaption."
+                )
+                warnings.warn(msg)
+        self._set_adapter_layers(enabled=False)
+
+    def set_adapter(self, adapter_name: str | list[str]) -> None:
+
+        for module in self.model.modules():
+            if isinstance(module, SorsaLayer):
+                if module.merged:
+                    warnings.warn("Adapter cannot be set when the model is merged. Unmerging the model first.")
+                    module.unmerge()
+                module.set_adapter(adapter_name)
+        self.active_adapter = adapter_name
 
     def forward(self, *args, **kwargs):
         outputs = self.model.forward(*args, **kwargs)
