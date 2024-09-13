@@ -37,6 +37,7 @@ from transformers import PreTrainedModel
 from transformers.modeling_outputs import QuestionAnsweringModelOutput, SequenceClassifierOutput, TokenClassifierOutput
 from transformers.utils import PushToHubMixin
 
+from peft.tuners.sorsa.model import SorsaModel
 from peft.utils.constants import DUMMY_MODEL_CONFIG
 
 from . import __version__
@@ -62,6 +63,7 @@ from .tuners import (
     VeraModel,
     XLoraConfig,
     XLoraModel,
+    SorsaModel,
 )
 from .tuners.tuners_utils import BaseTuner, BaseTunerLayer
 from .utils import (
@@ -102,6 +104,7 @@ PEFT_TYPE_TO_MODEL_MAPPING = {
     PeftType.XLORA: XLoraModel,
     PeftType.HRA: HRAModel,
     PeftType.VBLORA: VBLoRAModel,
+    PeftType.SORSA: SorsaModel,
 }
 
 
