@@ -37,11 +37,7 @@ class SorsaConfig(PeftConfig):
     )
 
     def to_dict(self):
-        """
-        Returns the configuration for your adapter model as a dictionary. Removes runtime configurations.
-        """
         rv = super().to_dict()
-        rv.pop("runtime_config")
         return rv
 
     def __post_init__(self):

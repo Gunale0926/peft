@@ -101,9 +101,9 @@ class SorsaLayer(BaseTunerLayer):
         sorsa_S = s[: self.r[adapter_name]]
         sorsa_B = v[:, : self.r[adapter_name]]
 
-        self.sorsa_A[adapter_name].data = sorsa_A
-        self.sorsa_S[adapter_name].data = sorsa_S
-        self.sorsa_B[adapter_name].data = sorsa_B
+        self.sorsa_A[adapter_name].data = sorsa_A.contiguous()
+        self.sorsa_S[adapter_name].data = sorsa_S.contiguous()
+        self.sorsa_B[adapter_name].data = sorsa_B.contiguous()
 
         weight = weight.data - self.scaling[adapter_name] * sorsa_B @ torch.diag(sorsa_S) @ sorsa_A
         weight = weight.to(dtype)

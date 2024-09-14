@@ -170,7 +170,7 @@ class SorsaModel(BaseTuner):
             # Calculate the orthogonal regularization
             gamma = self.peft_config[self.trainable_adapter_name].gamma
 
-            if gamma <= 0:
+            if gamma < 0:
                 raise ValueError("gamma should be greater than 0. ")
 
             regu_loss = 0
