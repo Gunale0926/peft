@@ -163,6 +163,13 @@ class SorsaModel(BaseTuner):
                 module.set_adapter(adapter_name)
         self.active_adapter = adapter_name
 
+    def unload(self) -> torch.nn.Module:
+        """
+        Gets back the base model by removing all the lora modules without merging. This gives back the original base
+        model.
+        """
+        return self._unload_and_optionally_merge(merge=False)
+
     def forward(self, *args, **kwargs):
         outputs = self.model.forward(*args, **kwargs)
 
